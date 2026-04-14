@@ -9,7 +9,7 @@ from PIL import Image
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-CORS(app, origins="*")
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 @app.after_request
 def after_request(response):
