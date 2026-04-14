@@ -1,27 +1,40 @@
-<!-- Replace your entire <form> block with this -->
-<input type="file" id="fileInput" accept="image/*">
-<button onclick="analyzeImage()">Analyze Image</button>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cervical Cancer Detection</title>
+</head>
+<body>
 
-<script>
-const BACKEND = "https://your-app.onrender.com"; // paste your Render URL here
+    <h2>Upload Image</h2>
 
-async function analyzeImage() {
-  const file = document.getElementById("fileInput").files[0];
-  if (!file) return alert("Please select an image");
+    <input type="file" id="fileInput">
+    <button onclick="upload()">Predict</button>
 
-  const formData = new FormData();
-  formData.append("file", file);
+    <h3 id="result"></h3>
 
-  document.querySelector(".result").innerHTML = "Analyzing...";
+    <script>
+        async function upload() {
+            const file = document.getElementById("fileInput").files[0];
 
-  const res = await fetch(`${BACKEND}/predict`, { method: "POST", body: formData });
-  const data = await res.json();
+            if (!file) {
+                alert("Please select a file");
+                return;
+            }
 
-  if (data.error) {
-    document.querySelector(".error").innerHTML = data.error;
-  } else {
-    document.querySelector(".result").innerHTML = `Prediction: <b>${data.prediction}</b>`;
-    document.querySelector(".confidence").innerHTML = `Confidence: ${data.confidence}%`;
-  }
-}
-</script>
+            const formData = new FormData();
+            formData.append("file", file);
+
+            const response = await fetch("/predict", {
+                method: "POST",
+                body: formData
+            });
+
+            const data = await response.json();
+
+            document.getElementById("result").innerText =
+                `Prediction: ${data.class} (${data.confidence.toFixed(2)}%)`;
+        }
+    </script>
+
+</body>
+</html>
