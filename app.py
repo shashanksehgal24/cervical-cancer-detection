@@ -9,11 +9,17 @@ from PIL import Image
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins="*")
+
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+    response.headers.add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+    return response
 
 UPLOAD_FOLDER = "/tmp/uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 device = torch.device("cpu")
@@ -22,7 +28,6 @@ class_names = ["HSIL", "LSIL", "NILM", "SCC"]
 
 model = models.mobilenet_v3_small(pretrained=False)
 model.classifier[3] = nn.Linear(model.classifier[3].in_features, 4)
-
 model.load_state_dict(torch.load("cervical_model.pth", map_location=device))
 model.eval()
 
@@ -31,7 +36,6 @@ transform = transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 ])
-
 
 def predict_image(image_path):
     try:
@@ -52,14 +56,11 @@ def predict_image(image_path):
 
     result = class_names[predicted.item()]
     confidence = round(confidence * 100, 2)
-
     return result, confidence
-
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
-
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -69,7 +70,6 @@ def index():
     img_path = None
 
     if request.method == "POST":
-
         if "file" not in request.files:
             error = "No file uploaded"
             return render_template("index.html", error=error)
@@ -88,10 +88,8 @@ def index():
 
         if result == "Invalid Image":
             error = "Uploaded file is not a valid image"
-
         elif result == "Low Confidence":
             error = "Cannot determine the result with confidence. Please upload a clearer image."
-
         else:
             prediction = result
             confidence = conf
@@ -105,9 +103,11 @@ def index():
         img_path=img_path
     )
 
-
-@app.route("/predict", methods=["POST"])
+@app.route("/predict", methods=["POST", "OPTIONS"])
 def predict():
+    if request.method == "OPTIONS":
+        return jsonify({}), 200
+
     if "file" not in request.files:
         return jsonify({"error": "No file uploaded"}), 400
 
@@ -129,7 +129,6 @@ def predict():
         return jsonify({"error": "Low confidence, please upload a clearer image"}), 400
 
     return jsonify({"prediction": result, "confidence": conf})
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
